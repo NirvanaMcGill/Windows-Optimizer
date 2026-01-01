@@ -427,7 +427,7 @@ fn check_cpu_architecture() -> Check {
             9 => "x64",
             _ => "Unknown",
         })
-        .unwrap_or("Unknown");
+        .unwrap_or_else(|| "Unknown");
     Check::new("CPU Architecture", arch, CheckStatus::Info)
 }
 

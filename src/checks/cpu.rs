@@ -18,14 +18,8 @@ pub fn run_cpu_checks() -> CategoryResults {
         check_processor_performance_increase_threshold(), check_processor_performance_decrease_threshold(), check_processor_idle_demote_threshold(), check_processor_idle_promote_threshold(), check_processor_idle_state_max(),
         check_processor_idle_time_check(), check_processor_latency_hint_min(), check_processor_latency_hint_perf(), check_processor_allow_throttling(), check_processor_duty_cycling(),
         check_intel_turbo_boost(), check_amd_turbo_core(), check_cpu_priority_class(), check_processor_scheduling(), check_cpu_affinity_policy(),
-        Check::new("CPU Architecture", "x64", CheckStatus::Info), Check::new("CPU Cores", "Detected", CheckStatus::Info),
-        Check::new("CPU Threads", "Detected", CheckStatus::Info), Check::new("L1 Cache", "Present", CheckStatus::Info),
-        Check::new("L2 Cache", "Present", CheckStatus::Info), Check::new("L3 Cache", "Present", CheckStatus::Info),
-        Check::new("CPU Base Clock", "Detected", CheckStatus::Info), Check::new("CPU Max Clock", "Detected", CheckStatus::Info),
-        Check::new("CPU Temperature", "Normal", CheckStatus::Optimal), Check::new("CPU Voltage", "Normal", CheckStatus::Optimal),
-        Check::new("CPU Power Draw", "Normal", CheckStatus::Optimal), Check::new("CPU Microcode", "Up to Date", CheckStatus::Optimal),
-        Check::new("CPU Extended Features", "Available", CheckStatus::Info), Check::new("AVX/AVX2 Support", "Enabled", CheckStatus::Optimal),
-        Check::new("SSE4.2 Support", "Enabled", CheckStatus::Optimal),
+        check_cpu_architecture(), check_cpu_name(), check_cpu_cores(), check_cpu_threads(), check_l2_cache(), check_l3_cache(),
+        check_cpu_base_clock(), check_cpu_max_clock(),
     ].into_par_iter().collect();
     
     for check in checks {
@@ -333,9 +327,78 @@ fn check_processor_scheduling() -> Check {
 }
 
 fn check_cpu_affinity_policy() -> Check {
-    Check::new(
-        "CPU Affinity Policy",
-        "System Managed",
-        CheckStatus::Info
-    ).with_description("Default CPU core assignment policy.")
+    Check::new("CPU Affinity Policy", "System Managed", CheckStatus::Info)
+        .with_description("Default CPU core assignment policy.")
+}
+
+fn check_cpu_name() -> Check {
+    let name = query_cpu_info()
+        .map(|info| info.name.trim().to_string())
+        .unwrap_or_else(|| "Unknown".to_string());
+    Check::new("CPU Name", &name, CheckStatus::Info)
+}
+
+fn check_cpu_architecture() -> Check {
+    let arch = query_cpu_info()
+        .map(|info| match info.architecture {
+            0 => "x86",
+            1 => "MIPS",
+            2 => "Alpha",
+            3 => "PowerPC",
+            6 => "ia64",
+            9 => "x64",
+            _ => "Unknown",
+        })
+        .unwrap_or("Unknown");
+    Check::new("CPU Architecture", arch, CheckStatus::Info)
+}
+
+fn check_cpu_cores() -> Check {
+    let cores = query_cpu_info()
+        .map(|info| format!("{} cores", info.cores))
+        .unwrap_or_else(|| "Unknown".to_string());
+    Check::new("CPU Cores", &cores, CheckStatus::Info)
+}
+
+fn check_cpu_threads() -> Check {
+    let threads = query_cpu_info()
+        .map(|info| format!("{} threads", info.logical))
+        .unwrap_or_else(|| "Unknown".to_string());
+    Check::new("CPU Threads", &threads, CheckStatus::Info)
+}
+
+fn check_l2_cache() -> Check {
+    let cache = query_cpu_info()
+        .map(|info| if info.l2_cache > 0 {
+            format!("{} KB", info.l2_cache)
+        } else {
+            "Not reported".to_string()
+        })
+        .unwrap_or_else(|| "Unknown".to_string());
+    Check::new("L2 Cache", &cache, CheckStatus::Info)
+}
+
+fn check_l3_cache() -> Check {
+    let cache = query_cpu_info()
+        .map(|info| if info.l3_cache > 0 {
+            format!("{} KB", info.l3_cache)
+        } else {
+            "Not reported".to_string()
+        })
+        .unwrap_or_else(|| "Unknown".to_string());
+    Check::new("L3 Cache", &cache, CheckStatus::Info)
+}
+
+fn check_cpu_base_clock() -> Check {
+    let clock = query_cpu_info()
+        .map(|info| format!("{} MHz", info.current_clock))
+        .unwrap_or_else(|| "Unknown".to_string());
+    Check::new("CPU Current Clock", &clock, CheckStatus::Info)
+}
+
+fn check_cpu_max_clock() -> Check {
+    let clock = query_cpu_info()
+        .map(|info| format!("{} MHz", info.max_clock))
+        .unwrap_or_else(|| "Unknown".to_string());
+    Check::new("CPU Max Clock", &clock, CheckStatus::Info)
 }

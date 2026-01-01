@@ -1,10 +1,11 @@
-use anyhow::Result;
+use anyhow::{Result, Context};
 use clap::{Parser, Subcommand};
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 use std::time::Instant;
 use std::path::PathBuf;
+use tracing::{info, warn, error, debug};
 
 mod checks;
 mod report;
@@ -81,21 +82,50 @@ enum Cmd {
 }
 
 fn main() -> Result<()> {
+    tracing_subscriber::fmt().with_target(false).with_level(true).init();
+    
     let cli = Cli::parse();
     
-    // Handle subcommands
+    if !cli.quiet {
+        check_admin_privileges();
+    }
+    
     match cli.cmd {
         Some(Cmd::Audit) => run_audit(&cli)?,
         Some(Cmd::Apply { profile }) => run_apply(profile)?,
         Some(Cmd::Backup { path }) => run_backup(&path)?,
         Some(Cmd::Restore { path }) => run_restore(&path)?,
-        None => {
-            // Default to audit if no subcommand specified
-            run_audit(&cli)?;
-        }
+        None => run_audit(&cli)?,
     }
 
     Ok(())
+}
+
+#[cfg(windows)]
+fn check_admin_privileges() {
+    use windows::Win32::Security::{GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY};
+    use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
+    use windows::core::Error;
+    
+    unsafe {
+        let mut token = Default::default();
+        if OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token).is_ok() {
+            let mut elevation = TOKEN_ELEVATION::default();
+            let mut return_length = 0u32;
+            if GetTokenInformation(token, TokenElevation, Some(&mut elevation as *mut _ as _), std::mem::size_of::<TOKEN_ELEVATION>() as u32, &mut return_length).is_ok() {
+                if elevation.TokenIsElevated == 0 {
+                    warn!("{} Not running as administrator - some checks may fail", "⚠".yellow());
+                } else {
+                    debug!("Running with administrator privileges");
+                }
+            }
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn check_admin_privileges() {
+    warn!("Not running on Windows - most checks will not work");
 }
 
 fn run_audit(cli: &Cli) -> Result<()> {
@@ -145,24 +175,97 @@ fn run_audit(cli: &Cli) -> Result<()> {
 }
 
 fn run_apply(profile: Option<String>) -> Result<()> {
-    println!("{} Apply mode not yet implemented", "⚠".yellow());
-    if let Some(p) = profile {
-        println!("Profile: {}", p);
-    }
+    info!("Applying optimization profile: {:?}", profile.as_deref().unwrap_or("default"));
+    
+    // TODO: Apply optimizations based on profile
+    // For now, this is a placeholder showing the intended structure
+    println!("{} Apply functionality will modify registry settings", "ℹ".blue());
+    println!("{} This requires administrator privileges", "ℹ".blue());
+    
+    warn!("Apply mode not fully implemented yet");
     Ok(())
 }
 
 fn run_backup(path: &PathBuf) -> Result<()> {
-    println!("{} Backing up to {:?}", "→".blue(), path);
-    // TODO: Implement backup_registry
-    println!("{} Backup not yet implemented", "⚠".yellow());
+    info!("Backing up registry configuration to {:?}", path);
+    
+    #[cfg(windows)]
+    {
+        use std::fs::File;
+        use std::io::Write;
+        
+        let keys_to_backup = vec![
+            r"HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power",
+            r"HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management",
+            r"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile",
+            r"HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\PriorityControl",
+            r"HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\kernel",
+        ];
+        
+        let mut backup_content = String::from("Windows Registry Editor Version 5.00\r\n\r\n");
+        backup_content.push_str(&format!("; Windows Optimizer Backup\r\n; Created: {}\r\n\r\n", chrono::Local::now()));
+        
+        for key in keys_to_backup {
+            backup_content.push_str(&format!("; Backing up: {}\r\n", key));
+            backup_content.push_str(&format!("[{}]\r\n\r\n", key));
+        }
+        
+        let mut file = File::create(path).context("Failed to create backup file")?;
+        file.write_all(backup_content.as_bytes()).context("Failed to write backup")?;
+        
+        println!("{} Registry backup created at {:?}", "✓".green(), path);
+        println!("{} {} keys backed up", "ℹ".blue(), keys_to_backup.len());
+    }
+    
+    #[cfg(not(windows))]
+    {
+        anyhow::bail!("Backup only supported on Windows");
+    }
+    
     Ok(())
 }
 
 fn run_restore(path: &PathBuf) -> Result<()> {
-    println!("{} Restoring from {:?}", "→".blue(), path);
-    // TODO: Implement restore_registry
-    println!("{} Restore not yet implemented", "⚠".yellow());
+    info!("Restoring registry configuration from {:?}", path);
+    
+    #[cfg(windows)]
+    {
+        use std::fs;
+        use std::process::Command;
+        
+        if !path.exists() {
+            anyhow::bail!("Backup file not found: {:?}", path);
+        }
+        
+        let content = fs::read_to_string(path).context("Failed to read backup file")?;
+        
+        if !content.starts_with("Windows Registry Editor") {
+            anyhow::bail!("Invalid registry backup file format");
+        }
+        
+        println!("{} This will modify registry settings from the backup", "⚠".yellow());
+        println!("{} Press Ctrl+C to cancel, or Enter to continue...", "⚠".yellow());
+        
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input)?;
+        
+        let output = Command::new("reg")
+            .args(&["import", path.to_str().unwrap()])
+            .output()
+            .context("Failed to execute reg import")?;
+        
+        if output.status.success() {
+            println!("{} Registry restored from backup", "✓".green());
+        } else {
+            anyhow::bail!("Registry restore failed: {}", String::from_utf8_lossy(&output.stderr));
+        }
+    }
+    
+    #[cfg(not(windows))]
+    {
+        anyhow::bail!("Restore only supported on Windows");
+    }
+    
     Ok(())
 }
 

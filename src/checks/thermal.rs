@@ -1,28 +1,41 @@
 use crate::types::*;
-use rayon::prelude::*;
+use super::wmi_helper::*;
 
 pub fn run_thermal_checks() -> CategoryResults {
     let mut results = CategoryResults::new("Thermal");
     
-    let base_checks = vec![
-        Check::new("CPU Temperature", "Normal", CheckStatus::Optimal), Check::new("GPU Temperature", "Normal", CheckStatus::Optimal),
-        Check::new("Motherboard Temperature", "Normal", CheckStatus::Optimal), Check::new("Thermal Throttling Events", "None", CheckStatus::Optimal),
-        Check::new("CPU Fan Status", "Running", CheckStatus::Optimal), Check::new("Chassis Fans", "Running", CheckStatus::Optimal),
-        Check::new("Cooling Policy", "Active", CheckStatus::Optimal), Check::new("Thermal Management", "Configured", CheckStatus::Info),
-        Check::new("Ambient Temperature", "Normal", CheckStatus::Info), Check::new("Case Airflow", "Good", CheckStatus::Info),
-        Check::new("Thermal Paste", "Good Condition", CheckStatus::Info), Check::new("Heat Sink", "Properly Mounted", CheckStatus::Info),
-        Check::new("Dust Buildup", "None", CheckStatus::Optimal), Check::new("Temperature Sensors", "Working", CheckStatus::Optimal),
-        Check::new("Fan Control", "Automatic", CheckStatus::Info), Check::new("Liquid Cooling", "Not Detected", CheckStatus::Info),
-        Check::new("VRM Temperature", "Normal", CheckStatus::Optimal), Check::new("SSD Temperature", "Normal", CheckStatus::Optimal),
-        Check::new("RAM Temperature", "Normal", CheckStatus::Optimal), Check::new("Power Supply Temperature", "Normal", CheckStatus::Optimal),
-        Check::new("Chipset Temperature", "Normal", CheckStatus::Optimal), Check::new("M.2 SSD Heatsink", "Present", CheckStatus::Info),
-        Check::new("Thermal Zones", "Configured", CheckStatus::Info), Check::new("ACPI Thermal Zone", "Active", CheckStatus::Info),
-        Check::new("Fan Speed Control", "Working", CheckStatus::Optimal),
-    ];
-    
-    for check in base_checks {
-        results.add_check(check);
-    }
+    results.add_check(check_cpu_temp());
+    results.add_check(check_thermal_zone());
     
     results
+}
+
+fn check_cpu_temp() -> Check {
+    // Try to query CPU temperature from WMI
+    // Note: Most consumer systems don't expose temperature via WMI
+    let temp = query_wmi_u32("Win32_TemperatureProbe", "CurrentReading")
+        .map(|t| {
+            // WMI returns in tenths of Kelvin
+            let celsius = (t as f64 / 10.0) - 273.15;
+            if celsius > 0.0 && celsius < 150.0 {
+                format!("{:.1}°C", celsius)
+            } else {
+                "Not available".to_string()
+            }
+        })
+        .unwrap_or_else(|| "Not available via WMI".to_string());
+    
+    let status = if temp.contains("°C") {
+        CheckStatus::Info
+    } else {
+        CheckStatus::Info
+    };
+    
+    Check::new("CPU Temperature", &temp, status)
+        .with_description("Most systems require vendor-specific tools for accurate temps")
+}
+
+fn check_thermal_zone() -> Check {
+    let zone_count = count_wmi_instances("Win32_TemperatureProbe");
+    Check::new("Thermal Sensors", &format!("{} detected", zone_count), CheckStatus::Info)
 }

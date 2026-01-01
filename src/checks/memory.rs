@@ -10,13 +10,7 @@ pub fn run_memory_checks() -> CategoryResults {
         check_ram_speed(), check_ram_channel(), check_page_file(), check_memory_compression(), check_prefetch(),
         check_superfetch(), check_large_system_cache(), check_ndu_service(), check_second_level_cache(), check_clear_pagefile_at_shutdown(),
         check_disable_paging_executive(), check_large_page_minimum(), check_system_cache_limit(), check_io_page_lock_limit(), check_memory_management(),
-        check_physical_memory(), check_virtual_memory(), check_committed_memory(), check_paged_pool(), check_non_paged_pool(),
-        check_working_set(), check_standby_cache(), check_modified_page_list(), check_free_memory(), check_ram_timings(),
-        Check::new("Total RAM", "Detected", CheckStatus::Info), Check::new("Available RAM", "Sufficient", CheckStatus::Optimal),
-        Check::new("RAM Manufacturer", "Detected", CheckStatus::Info), Check::new("RAM Voltage", "Standard", CheckStatus::Info),
-        Check::new("RAM CAS Latency", "Detected", CheckStatus::Info), Check::new("RAM Frequency", "Optimized", CheckStatus::Optimal),
-        Check::new("Memory Controller", "Active", CheckStatus::Optimal), Check::new("Memory Slots Used", "Detected", CheckStatus::Info),
-        Check::new("ECC Memory", "Not Available", CheckStatus::Info), Check::new("Memory Rank", "Dual Rank", CheckStatus::Info),
+        check_total_ram(), check_available_ram(), check_ram_manufacturer(), check_ram_voltage(),
     ].into_par_iter().collect();
     
     for check in checks {
@@ -116,44 +110,29 @@ fn check_memory_management() -> Check {
     Check::new("Memory Management", "Optimized", CheckStatus::Optimal)
 }
 
-fn check_physical_memory() -> Check {
-    Check::new("Physical Memory", "Detected", CheckStatus::Info)
+fn check_total_ram() -> Check {
+    let total = query_wmi_u64("Win32_ComputerSystem", "TotalPhysicalMemory")
+        .map(|bytes| format!("{:.2} GB", bytes as f64 / 1024.0 / 1024.0 / 1024.0))
+        .unwrap_or_else(|| "Unknown".to_string());
+    Check::new("Total RAM", &total, CheckStatus::Info)
 }
 
-fn check_virtual_memory() -> Check {
-    Check::new("Virtual Memory", "Configured", CheckStatus::Info)
+fn check_available_ram() -> Check {
+    let available = query_wmi_u64("Win32_OperatingSystem", "FreePhysicalMemory")
+        .map(|kb| format!("{:.2} GB", kb as f64 / 1024.0 / 1024.0))
+        .unwrap_or_else(|| "Unknown".to_string());
+    Check::new("Available RAM", &available, CheckStatus::Info)
 }
 
-fn check_committed_memory() -> Check {
-    Check::new("Committed Memory", "Within Limits", CheckStatus::Optimal)
+fn check_ram_manufacturer() -> Check {
+    let manufacturer = query_wmi_string("Win32_PhysicalMemory", "Manufacturer")
+        .unwrap_or_else(|| "Unknown".to_string());
+    Check::new("RAM Manufacturer", &manufacturer.trim(), CheckStatus::Info)
 }
 
-fn check_paged_pool() -> Check {
-    Check::new("Paged Pool", "Healthy", CheckStatus::Optimal)
-}
-
-fn check_non_paged_pool() -> Check {
-    Check::new("Non-Paged Pool", "Healthy", CheckStatus::Optimal)
-}
-
-fn check_working_set() -> Check {
-    Check::new("Working Set", "Normal", CheckStatus::Info)
-}
-
-fn check_standby_cache() -> Check {
-    Check::new("Standby Cache", "Active", CheckStatus::Info)
-        .with_description("Memory cache for recently used files.")
-}
-
-fn check_modified_page_list() -> Check {
-    Check::new("Modified Page List", "Normal", CheckStatus::Info)
-}
-
-fn check_free_memory() -> Check {
-    Check::new("Free Memory", "Available", CheckStatus::Optimal)
-}
-
-fn check_ram_timings() -> Check {
-    Check::new("RAM Timings", "System Default", CheckStatus::Info)
-        .with_description("Configure in BIOS for optimal performance.")
+fn check_ram_voltage() -> Check {
+    let voltage = query_wmi_u32("Win32_PhysicalMemory", "ConfiguredVoltage")
+        .map(|mv| format!("{:.2}V", mv as f64 / 1000.0))
+        .unwrap_or_else(|| "Unknown".to_string());
+    Check::new("RAM Voltage", &voltage, CheckStatus::Info)
 }

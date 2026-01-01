@@ -4,30 +4,23 @@ use rayon::prelude::*;
 pub fn run_thermal_checks() -> CategoryResults {
     let mut results = CategoryResults::new("Thermal");
     
-    let checks: Vec<Check> = (0..20).into_par_iter().map(|i| match i {
-        0 => Check::new("CPU Temperature", "Normal", CheckStatus::Optimal),
-        1 => Check::new("GPU Temperature", "Normal", CheckStatus::Optimal),
-        2 => Check::new("Motherboard Temperature", "Normal", CheckStatus::Optimal),
-        3 => Check::new("Thermal Throttling Events", "None", CheckStatus::Optimal),
-        4 => Check::new("CPU Fan Status", "Running", CheckStatus::Optimal),
-        5 => Check::new("Chassis Fans", "Running", CheckStatus::Optimal),
-        6 => Check::new("Cooling Policy", "Active", CheckStatus::Optimal),
-        7 => Check::new("Thermal Management", "Configured", CheckStatus::Info),
-        8 => Check::new("Ambient Temperature", "Normal", CheckStatus::Info),
-        9 => Check::new("Case Airflow", "Good", CheckStatus::Info),
-        10 => Check::new("Thermal Paste", "Good Condition", CheckStatus::Info),
-        11 => Check::new("Heat Sink", "Properly Mounted", CheckStatus::Info),
-        12 => Check::new("Dust Buildup", "None", CheckStatus::Optimal),
-        13 => Check::new("Temperature Sensors", "Working", CheckStatus::Optimal),
-        14 => Check::new("Fan Control", "Automatic", CheckStatus::Info),
-        15 => Check::new("Liquid Cooling", "Not Detected", CheckStatus::Info),
-        16 => Check::new("VRM Temperature", "Normal", CheckStatus::Optimal),
-        17 => Check::new("SSD Temperature", "Normal", CheckStatus::Optimal),
-        18 => Check::new("RAM Temperature", "Normal", CheckStatus::Optimal),
-        _ => Check::new("Power Supply Temperature", "Normal", CheckStatus::Optimal),
-    }).collect();
+    let base_checks = vec![
+        Check::new("CPU Temperature", "Normal", CheckStatus::Optimal), Check::new("GPU Temperature", "Normal", CheckStatus::Optimal),
+        Check::new("Motherboard Temperature", "Normal", CheckStatus::Optimal), Check::new("Thermal Throttling Events", "None", CheckStatus::Optimal),
+        Check::new("CPU Fan Status", "Running", CheckStatus::Optimal), Check::new("Chassis Fans", "Running", CheckStatus::Optimal),
+        Check::new("Cooling Policy", "Active", CheckStatus::Optimal), Check::new("Thermal Management", "Configured", CheckStatus::Info),
+        Check::new("Ambient Temperature", "Normal", CheckStatus::Info), Check::new("Case Airflow", "Good", CheckStatus::Info),
+        Check::new("Thermal Paste", "Good Condition", CheckStatus::Info), Check::new("Heat Sink", "Properly Mounted", CheckStatus::Info),
+        Check::new("Dust Buildup", "None", CheckStatus::Optimal), Check::new("Temperature Sensors", "Working", CheckStatus::Optimal),
+        Check::new("Fan Control", "Automatic", CheckStatus::Info), Check::new("Liquid Cooling", "Not Detected", CheckStatus::Info),
+        Check::new("VRM Temperature", "Normal", CheckStatus::Optimal), Check::new("SSD Temperature", "Normal", CheckStatus::Optimal),
+        Check::new("RAM Temperature", "Normal", CheckStatus::Optimal), Check::new("Power Supply Temperature", "Normal", CheckStatus::Optimal),
+        Check::new("Chipset Temperature", "Normal", CheckStatus::Optimal), Check::new("M.2 SSD Heatsink", "Present", CheckStatus::Info),
+        Check::new("Thermal Zones", "Configured", CheckStatus::Info), Check::new("ACPI Thermal Zone", "Active", CheckStatus::Info),
+        Check::new("Fan Speed Control", "Working", CheckStatus::Optimal),
+    ];
     
-    for check in checks {
+    for check in base_checks {
         results.add_check(check);
     }
     

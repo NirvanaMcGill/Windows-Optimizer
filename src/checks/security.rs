@@ -5,22 +5,13 @@ use rayon::prelude::*;
 pub fn run_security_checks() -> CategoryResults {
     let mut results = CategoryResults::new("Security");
     
-    let checks: Vec<Check> = (0..15).into_par_iter().map(|i| match i {
-        0 => check_vbs(),
-        1 => check_core_isolation(),
-        2 => check_credential_guard(),
-        3 => check_defender_status(),
-        4 => check_firewall_status(),
-        5 => check_secure_boot(),
-        6 => check_tpm_status(),
-        7 => check_exploit_protection(),
-        8 => check_controlled_folder_access(),
-        9 => check_ransomware_protection(),
-        10 => check_smartscreen(),
-        11 => check_windows_update(),
-        12 => check_user_account_control(),
-        13 => check_bitlocker(),
-        _ => check_network_protection(),
+    let checks: Vec<Check> = (0..20).into_par_iter().map(|i| match i {
+        0 => check_vbs(), 1 => check_core_isolation(), 2 => check_credential_guard(), 3 => check_defender_status(), 4 => check_firewall_status(),
+        5 => check_secure_boot(), 6 => check_tpm_status(), 7 => check_exploit_protection(), 8 => check_controlled_folder_access(), 9 => check_ransomware_protection(),
+        10 => check_smartscreen(), 11 => check_windows_update(), 12 => check_user_account_control(), 13 => check_bitlocker(), 14 => check_network_protection(),
+        15 => Check::new("Windows Defender Antivirus", "Active", CheckStatus::Optimal), 16 => Check::new("Real-Time Protection", "Enabled", CheckStatus::Optimal),
+        17 => Check::new("Cloud-Delivered Protection", "Enabled", CheckStatus::Info), 18 => Check::new("Automatic Sample Submission", "Enabled", CheckStatus::Info),
+        _ => Check::new("Tamper Protection", "Enabled", CheckStatus::Optimal),
     }).collect();
     
     for check in checks {

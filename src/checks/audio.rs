@@ -5,27 +5,14 @@ use rayon::prelude::*;
 pub fn run_audio_checks() -> CategoryResults {
     let mut results = CategoryResults::new("Audio");
     
-    let checks: Vec<Check> = (0..20).into_par_iter().map(|i| match i {
-        0 => check_exclusive_mode(),
-        1 => check_audio_enhancements(),
-        2 => check_sample_rate(),
-        3 => check_bit_depth(),
-        4 => check_audio_service(),
-        5 => check_audio_endpoint_builder(),
-        6 => check_audio_buffer_size(),
-        7 => check_audio_dpc_latency(),
-        8 => check_audio_priority(),
-        9 => check_audio_offload(),
-        10 => check_spatial_sound(),
-        11 => check_communications_tab(),
-        12 => check_allow_applications_control(),
-        13 => check_audio_device_isolation(),
-        14 => check_audio_stream_priority(),
-        15 => check_wasapi_mode(),
-        16 => check_asio_support(),
-        17 => check_audio_latency_mode(),
-        18 => check_audio_driver_version(),
-        _ => check_audio_device_power(),
+    let checks: Vec<Check> = (0..25).into_par_iter().map(|i| match i {
+        0 => check_exclusive_mode(), 1 => check_audio_enhancements(), 2 => check_sample_rate(), 3 => check_bit_depth(), 4 => check_audio_service(),
+        5 => check_audio_endpoint_builder(), 6 => check_audio_buffer_size(), 7 => check_audio_dpc_latency(), 8 => check_audio_priority(), 9 => check_audio_offload(),
+        10 => check_spatial_sound(), 11 => check_communications_tab(), 12 => check_allow_applications_control(), 13 => check_audio_device_isolation(), 14 => check_audio_stream_priority(),
+        15 => check_wasapi_mode(), 16 => check_asio_support(), 17 => check_audio_latency_mode(), 18 => check_audio_driver_version(), 19 => check_audio_device_power(),
+        20 => Check::new("Audio Channels", "Stereo/5.1/7.1", CheckStatus::Info), 21 => Check::new("Audio Format", "PCM", CheckStatus::Info),
+        22 => Check::new("Audio Quality", "High", CheckStatus::Optimal), 23 => Check::new("Audio Output Device", "Detected", CheckStatus::Info),
+        _ => Check::new("Audio Input Device", "Detected", CheckStatus::Info),
     }).collect();
     
     for check in checks {

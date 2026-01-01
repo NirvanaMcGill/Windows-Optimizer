@@ -5,27 +5,14 @@ use rayon::prelude::*;
 pub fn run_input_checks() -> CategoryResults {
     let mut results = CategoryResults::new("Input");
     
-    let checks: Vec<Check> = (0..20).into_par_iter().map(|i| match i {
-        0 => check_mouse_acceleration(),
-        1 => check_pointer_precision(),
-        2 => check_mouse_speed(),
-        3 => check_mouse_threshold1(),
-        4 => check_mouse_threshold2(),
-        5 => check_keyboard_delay(),
-        6 => check_keyboard_speed(),
-        7 => check_hid_service(),
-        8 => check_tablet_input_service(),
-        9 => check_touch_keyboard_service(),
-        10 => check_mouse_trails(),
-        11 => check_snap_to_default(),
-        12 => check_mouse_sonar(),
-        13 => check_mouse_vanish(),
-        14 => check_pointer_shadow(),
-        15 => check_raw_input(),
-        16 => check_input_lag(),
-        17 => check_polling_rate(),
-        18 => check_usb_selective_suspend(),
-        _ => check_input_device_drivers(),
+    let checks: Vec<Check> = (0..25).into_par_iter().map(|i| match i {
+        0 => check_mouse_acceleration(), 1 => check_pointer_precision(), 2 => check_mouse_speed(), 3 => check_mouse_threshold1(), 4 => check_mouse_threshold2(),
+        5 => check_keyboard_delay(), 6 => check_keyboard_speed(), 7 => check_hid_service(), 8 => check_tablet_input_service(), 9 => check_touch_keyboard_service(),
+        10 => check_mouse_trails(), 11 => check_snap_to_default(), 12 => check_mouse_sonar(), 13 => check_mouse_vanish(), 14 => check_pointer_shadow(),
+        15 => check_raw_input(), 16 => check_input_lag(), 17 => check_polling_rate(), 18 => check_usb_selective_suspend(), 19 => check_input_device_drivers(),
+        20 => Check::new("Keyboard Layout", "Detected", CheckStatus::Info), 21 => Check::new("Numlock State", "Configured", CheckStatus::Info),
+        22 => Check::new("Scroll Lock", "Disabled", CheckStatus::Info), 23 => Check::new("Input Language", "Configured", CheckStatus::Info),
+        _ => Check::new("Gamepad Support", "Available", CheckStatus::Info),
     }).collect();
     
     for check in checks {

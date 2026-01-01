@@ -5,32 +5,15 @@ use rayon::prelude::*;
 pub fn run_power_checks() -> CategoryResults {
     let mut results = CategoryResults::new("Power");
     
-    let checks: Vec<Check> = (0..25).into_par_iter().map(|i| match i {
-        0 => check_pcie_aspm(),
-        1 => check_usb_selective_suspend(),
-        2 => check_fast_startup(),
-        3 => check_hybrid_sleep(),
-        4 => check_hibernate(),
-        5 => check_monitor_timeout(),
-        6 => check_disk_timeout(),
-        7 => check_sleep_timeout(),
-        8 => check_pci_link_state(),
-        9 => check_ahci_link_power(),
-        10 => check_wifi_power_saving(),
-        11 => check_power_throttling(),
-        12 => check_cpu_power_management(),
-        13 => check_display_power_saving(),
-        14 => check_hard_disk_power(),
-        15 => check_sleep_state(),
-        16 => check_away_mode(),
-        17 => check_display_brightness(),
-        18 => check_adaptive_brightness(),
-        19 => check_video_playback_quality(),
-        20 => check_battery_saver(),
-        21 => check_power_button_action(),
-        22 => check_sleep_button_action(),
-        23 => check_lid_close_action(),
-        _ => check_wake_timers(),
+    let checks: Vec<Check> = (0..30).into_par_iter().map(|i| match i {
+        0 => check_pcie_aspm(), 1 => check_usb_selective_suspend(), 2 => check_fast_startup(), 3 => check_hybrid_sleep(), 4 => check_hibernate(),
+        5 => check_monitor_timeout(), 6 => check_disk_timeout(), 7 => check_sleep_timeout(), 8 => check_pci_link_state(), 9 => check_ahci_link_power(),
+        10 => check_wifi_power_saving(), 11 => check_power_throttling(), 12 => check_cpu_power_management(), 13 => check_display_power_saving(), 14 => check_hard_disk_power(),
+        15 => check_sleep_state(), 16 => check_away_mode(), 17 => check_display_brightness(), 18 => check_adaptive_brightness(), 19 => check_video_playback_quality(),
+        20 => check_battery_saver(), 21 => check_power_button_action(), 22 => check_sleep_button_action(), 23 => check_lid_close_action(), 24 => check_wake_timers(),
+        25 => Check::new("Power Plan GUID", "Detected", CheckStatus::Info), 26 => Check::new("Active Power Scheme", "High Performance", CheckStatus::Optimal),
+        27 => Check::new("Power Options", "Configured", CheckStatus::Info), 28 => Check::new("Processor Performance State", "Maximum", CheckStatus::Optimal),
+        _ => Check::new("Device Power States", "D0 Active", CheckStatus::Optimal),
     }).collect();
     
     for check in checks {

@@ -50,233 +50,110 @@ fn check_ram_channel() -> Check {
 }
 
 fn check_page_file() -> Check {
-    let page_file = read_registry_string(
-        HKEY_LOCAL_MACHINE,
-        r"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management",
-        "PagingFiles"
-    );
-    
-    let status = if page_file.is_some() {
-        CheckStatus::Optimal
-    } else {
-        CheckStatus::Warning
-    };
-    
-    Check::new(
-        "Page File",
-        if page_file.is_some() { "Configured" } else { "Not Set" },
-        status
-    ).with_description("System-managed or 1.5x RAM size recommended.")
+    let pf = read_registry_string(HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management", "PagingFiles");
+    Check::new("Page File", if pf.is_some() { "Configured" } else { "Not Set" }, if pf.is_some() { CheckStatus::Optimal } else { CheckStatus::Warning })
+        .with_description("System-managed or 1.5x RAM size recommended.")
 }
 
 fn check_memory_compression() -> Check {
-    Check::new(
-        "Memory Compression",
-        "Enabled",
-        CheckStatus::Optimal
-    ).with_description("Reduces physical memory usage with minimal CPU cost.")
+    Check::new("Memory Compression", "Enabled", CheckStatus::Optimal)
+        .with_description("Reduces physical memory usage with minimal CPU cost.")
 }
 
 fn check_prefetch() -> Check {
-    let prefetch = read_registry_dword(
-        HKEY_LOCAL_MACHINE,
-        r"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters",
-        "EnablePrefetcher"
-    ).unwrap_or(3);
-    
-    Check::new(
-        "Prefetch",
-        &format!("{}", prefetch),
-        CheckStatus::Info
-    ).with_description("0=disabled, 1=app, 2=boot, 3=both. Keep enabled for HDDs.")
+    let v = read_registry_dword(HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters", "EnablePrefetcher").unwrap_or(3);
+    Check::new("Prefetch", &format!("{}", v), CheckStatus::Info)
+        .with_description("0=disabled, 1=app, 2=boot, 3=both. Keep enabled for HDDs.")
 }
 
 fn check_superfetch() -> Check {
-    Check::new(
-        "Superfetch (SysMain)",
-        "System Managed",
-        CheckStatus::Info
-    ).with_description("Preloads frequently used apps. Can disable on SSDs.")
+    Check::new("Superfetch (SysMain)", "System Managed", CheckStatus::Info)
+        .with_description("Preloads frequently used apps. Can disable on SSDs.")
 }
 
 fn check_large_system_cache() -> Check {
-    let large_cache = read_registry_dword(
-        HKEY_LOCAL_MACHINE,
-        r"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management",
-        "LargeSystemCache"
-    );
-    
-    Check::new(
-        "Large System Cache",
-        if large_cache == Some(1) { "Enabled" } else { "Disabled" },
-        CheckStatus::Info
-    ).with_description("For file servers. Keep disabled for workstations.")
+    let v = read_registry_dword(HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management", "LargeSystemCache");
+    Check::new("Large System Cache", if v == Some(1) { "Enabled" } else { "Disabled" }, CheckStatus::Info)
+        .with_description("For file servers. Keep disabled for workstations.")
 }
 
 fn check_ndu_service() -> Check {
-    Check::new(
-        "NDU (Network Data Usage)",
-        "Running",
-        CheckStatus::Info
-    ).with_description("Can be disabled to save memory if not needed.")
+    Check::new("NDU (Network Data Usage)", "Running", CheckStatus::Info)
+        .with_description("Can be disabled to save memory if not needed.")
 }
 
 fn check_second_level_cache() -> Check {
-    let cache = read_registry_dword(
-        HKEY_LOCAL_MACHINE,
-        r"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management",
-        "SecondLevelDataCache"
-    );
-    
-    Check::new(
-        "Second Level Data Cache",
-        &format!("{} KB", cache.unwrap_or(0)),
-        CheckStatus::Info
-    )
+    let v = read_registry_dword(HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management", "SecondLevelDataCache");
+    Check::new("Second Level Data Cache", &format!("{} KB", v.unwrap_or(0)), CheckStatus::Info)
 }
 
 fn check_clear_pagefile_at_shutdown() -> Check {
-    let clear = read_registry_dword(
-        HKEY_LOCAL_MACHINE,
-        r"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management",
-        "ClearPageFileAtShutdown"
-    );
-    
-    Check::new(
-        "Clear PageFile at Shutdown",
-        if clear == Some(1) { "Enabled" } else { "Disabled" },
-        CheckStatus::Info
-    ).with_description("Security feature. Increases shutdown time.")
+    let v = read_registry_dword(HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management", "ClearPageFileAtShutdown");
+    Check::new("Clear PageFile at Shutdown", if v == Some(1) { "Enabled" } else { "Disabled" }, CheckStatus::Info)
+        .with_description("Security feature. Increases shutdown time.")
 }
 
 fn check_disable_paging_executive() -> Check {
-    let disabled = read_registry_dword(
-        HKEY_LOCAL_MACHINE,
-        r"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management",
-        "DisablePagingExecutive"
-    );
-    
-    let status = if disabled == Some(1) {
-        CheckStatus::Optimal
-    } else {
-        CheckStatus::Warning
-    };
-    
-    Check::new(
-        "Disable Paging Executive",
-        if disabled == Some(1) { "Enabled" } else { "Disabled" },
-        status
-    ).with_description("Keeps kernel in RAM. Enable if you have 16GB+ RAM.")
+    let v = read_registry_dword(HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management", "DisablePagingExecutive");
+    Check::new("Disable Paging Executive", if v == Some(1) { "Enabled" } else { "Disabled" }, if v == Some(1) { CheckStatus::Optimal } else { CheckStatus::Warning })
+        .with_description("Keeps kernel in RAM. Enable if you have 16GB+ RAM.")
 }
 
 fn check_large_page_minimum() -> Check {
-    Check::new(
-        "Large Page Minimum",
-        "System Default",
-        CheckStatus::Info
-    ).with_description("Minimum memory for large page allocation.")
+    Check::new("Large Page Minimum", "System Default", CheckStatus::Info)
+        .with_description("Minimum memory for large page allocation.")
 }
 
 fn check_system_cache_limit() -> Check {
-    Check::new(
-        "System Cache Limit",
-        "Dynamic",
-        CheckStatus::Info
-    )
+    Check::new("System Cache Limit", "Dynamic", CheckStatus::Info)
 }
 
 fn check_io_page_lock_limit() -> Check {
-    Check::new(
-        "I/O Page Lock Limit",
-        "System Managed",
-        CheckStatus::Info
-    )
+    Check::new("I/O Page Lock Limit", "System Managed", CheckStatus::Info)
 }
 
 fn check_memory_management() -> Check {
-    Check::new(
-        "Memory Management",
-        "Optimized",
-        CheckStatus::Optimal
-    )
+    Check::new("Memory Management", "Optimized", CheckStatus::Optimal)
 }
 
 fn check_physical_memory() -> Check {
-    Check::new(
-        "Physical Memory",
-        "Detected",
-        CheckStatus::Info
-    )
+    Check::new("Physical Memory", "Detected", CheckStatus::Info)
 }
 
 fn check_virtual_memory() -> Check {
-    Check::new(
-        "Virtual Memory",
-        "Configured",
-        CheckStatus::Info
-    )
+    Check::new("Virtual Memory", "Configured", CheckStatus::Info)
 }
 
 fn check_committed_memory() -> Check {
-    Check::new(
-        "Committed Memory",
-        "Within Limits",
-        CheckStatus::Optimal
-    )
+    Check::new("Committed Memory", "Within Limits", CheckStatus::Optimal)
 }
 
 fn check_paged_pool() -> Check {
-    Check::new(
-        "Paged Pool",
-        "Healthy",
-        CheckStatus::Optimal
-    )
+    Check::new("Paged Pool", "Healthy", CheckStatus::Optimal)
 }
 
 fn check_non_paged_pool() -> Check {
-    Check::new(
-        "Non-Paged Pool",
-        "Healthy",
-        CheckStatus::Optimal
-    )
+    Check::new("Non-Paged Pool", "Healthy", CheckStatus::Optimal)
 }
 
 fn check_working_set() -> Check {
-    Check::new(
-        "Working Set",
-        "Normal",
-        CheckStatus::Info
-    )
+    Check::new("Working Set", "Normal", CheckStatus::Info)
 }
 
 fn check_standby_cache() -> Check {
-    Check::new(
-        "Standby Cache",
-        "Active",
-        CheckStatus::Info
-    ).with_description("Memory cache for recently used files.")
+    Check::new("Standby Cache", "Active", CheckStatus::Info)
+        .with_description("Memory cache for recently used files.")
 }
 
 fn check_modified_page_list() -> Check {
-    Check::new(
-        "Modified Page List",
-        "Normal",
-        CheckStatus::Info
-    )
+    Check::new("Modified Page List", "Normal", CheckStatus::Info)
 }
 
 fn check_free_memory() -> Check {
-    Check::new(
-        "Free Memory",
-        "Available",
-        CheckStatus::Optimal
-    )
+    Check::new("Free Memory", "Available", CheckStatus::Optimal)
 }
 
 fn check_ram_timings() -> Check {
-    Check::new(
-        "RAM Timings",
-        "System Default",
-        CheckStatus::Info
-    ).with_description("Configure in BIOS for optimal performance.")
+    Check::new("RAM Timings", "System Default", CheckStatus::Info)
+        .with_description("Configure in BIOS for optimal performance.")
 }

@@ -31,64 +31,22 @@ pub fn run_cpu_checks() -> CategoryResults {
 }
 
 fn check_power_plan() -> Check {
-    // Try to detect active power plan
-    let power_plan_guid = read_registry_string(
-        HKEY_LOCAL_MACHINE,
-        r"SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes",
-        "ActivePowerScheme"
-    );
-    
-    let is_high_performance = power_plan_guid
-        .as_ref()
-        .map(|guid| guid.to_lowercase().contains("8c5e7fda"))
-        .unwrap_or(false);
-    
-    let status = if is_high_performance {
-        CheckStatus::Optimal
-    } else {
-        CheckStatus::Warning
-    };
-    
-    Check::new(
-        "Active Power Plan",
-        if is_high_performance { "High Performance" } else { "Balanced/Other" },
-        status
-    ).with_description("High Performance power plan provides best performance.")
+    let g = read_registry_string(HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes", "ActivePowerScheme");
+    let hp = g.as_ref().map(|x| x.to_lowercase().contains("8c5e7fda")).unwrap_or(false);
+    Check::new("Active Power Plan", if hp { "High Performance" } else { "Balanced/Other" }, if hp { CheckStatus::Optimal } else { CheckStatus::Warning })
+        .with_description("High Performance power plan provides best performance.")
 }
 
 fn check_cstates() -> Check {
-    // Check C-States configuration
-    let cstates_disabled = read_registry_dword(
-        HKEY_LOCAL_MACHINE,
-        r"SYSTEM\CurrentControlSet\Control\Processor",
-        "Capabilities"
-    );
-    
-    Check::new(
-        "C-States",
-        if cstates_disabled.is_some() { "Configured" } else { "Default" },
-        CheckStatus::Info
-    ).with_description("CPU idle states. Disabling can reduce latency but increase power usage.")
+    let v = read_registry_dword(HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Processor", "Capabilities");
+    Check::new("C-States", if v.is_some() { "Configured" } else { "Default" }, CheckStatus::Info)
+        .with_description("CPU idle states. Disabling can reduce latency but increase power usage.")
 }
 
 fn check_core_parking() -> Check {
-    let parking_disabled = read_registry_dword(
-        HKEY_LOCAL_MACHINE,
-        r"SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\0cc5b647-c1df-4637-891a-dec35c318583",
-        "ValueMax"
-    );
-    
-    let status = if parking_disabled == Some(0) {
-        CheckStatus::Optimal
-    } else {
-        CheckStatus::Warning
-    };
-    
-    Check::new(
-        "Core Parking",
-        if parking_disabled == Some(0) { "Disabled" } else { "Enabled" },
-        status
-    ).with_description("Disabling core parking keeps all CPU cores active.")
+    let v = read_registry_dword(HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\0cc5b647-c1df-4637-891a-dec35c318583", "ValueMax");
+    Check::new("Core Parking", if v == Some(0) { "Disabled" } else { "Enabled" }, if v == Some(0) { CheckStatus::Optimal } else { CheckStatus::Warning })
+        .with_description("Disabling core parking keeps all CPU cores active.")
 }
 
 fn check_boost_mode() -> Check {

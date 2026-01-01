@@ -1,7 +1,7 @@
 #[cfg(windows)]
 pub fn get_gpu_info() -> Option<(String, u64)> {
     use windows::Win32::Graphics::Dxgi::{CreateDXGIFactory1, IDXGIFactory1};
-    
+
     unsafe {
         let factory: Result<IDXGIFactory1, _> = CreateDXGIFactory1();
         if let Ok(factory) = factory {

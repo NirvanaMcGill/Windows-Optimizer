@@ -27,7 +27,7 @@ pub fn export_json(results: &AuditResults, path: &str) -> Result<()> {
 
 pub fn export_csv(results: &AuditResults, path: &str) -> Result<()> {
     let mut csv = String::from("Category,Check,Value,Status,Description\n");
-    
+
     for category in results.categories.values() {
         for check in &category.checks {
             let status_str = match check.status {
@@ -46,13 +46,14 @@ pub fn export_csv(results: &AuditResults, path: &str) -> Result<()> {
             ));
         }
     }
-    
+
     fs::write(path, csv)?;
     Ok(())
 }
 
 pub fn export_html(results: &AuditResults, path: &str) -> Result<()> {
-    let mut html = String::from(r#"<!DOCTYPE html>
+    let mut html = String::from(
+        r#"<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -125,10 +126,14 @@ pub fn export_html(results: &AuditResults, path: &str) -> Result<()> {
 <body>
     <div class="header">
         <h1>🚀 Windows Optimizer Report</h1>
-        <div class="timestamp">"#);
-    
-    html.push_str(&format!("Generated: {}</div>\n    </div>\n", results.timestamp));
-    
+        <div class="timestamp">"#,
+    );
+
+    html.push_str(&format!(
+        "Generated: {}</div>\n    </div>\n",
+        results.timestamp
+    ));
+
     // Summary cards
     html.push_str("    <div class=\"summary\">\n");
     html.push_str(&format!(
@@ -148,11 +153,14 @@ pub fn export_html(results: &AuditResults, path: &str) -> Result<()> {
         results.count_status(CheckStatus::Info)
     ));
     html.push_str("    </div>\n\n");
-    
+
     // Categories
     for category in results.categories.values() {
-        html.push_str(&format!("    <div class=\"category\">\n        <div class=\"category-header\">{}</div>\n", esc(&category.name)));
-        
+        html.push_str(&format!(
+            "    <div class=\"category\">\n        <div class=\"category-header\">{}</div>\n",
+            esc(&category.name)
+        ));
+
         for check in &category.checks {
             let icon = match check.status {
                 CheckStatus::Optimal => "✓",
@@ -160,34 +168,34 @@ pub fn export_html(results: &AuditResults, path: &str) -> Result<()> {
                 CheckStatus::Issue => "✗",
                 CheckStatus::Info => "ℹ",
             };
-            
+
             let class = match check.status {
                 CheckStatus::Optimal => "optimal",
                 CheckStatus::Warning => "warning",
                 CheckStatus::Issue => "issue",
                 CheckStatus::Info => "info",
             };
-            
+
             html.push_str(&format!(
                 "        <div class=\"check\">\n            <div class=\"check-icon {}\">{}</div>\n            <div class=\"check-name\">{}</div>\n            <div class=\"check-value\">{}</div>\n",
                 class, icon, esc(&check.name), esc(&check.value)
             ));
-            
+
             if !check.description.is_empty() {
                 html.push_str(&format!(
                     "            <div class=\"check-description\">{}</div>\n",
                     esc(&check.description)
                 ));
             }
-            
+
             html.push_str("        </div>\n");
         }
-        
+
         html.push_str("    </div>\n");
     }
-    
+
     html.push_str("</body>\n</html>");
-    
+
     fs::write(path, html)?;
     Ok(())
 }

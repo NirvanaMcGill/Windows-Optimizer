@@ -1,6 +1,12 @@
 use crate::types::*;
 use super::utils::*;
+use super::wmi_helper::*;
 use rayon::prelude::*;
+
+const POWER_SETTINGS_BASE: &str = r"SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00";
+const CORE_PARKING_GUID: &str = r"\0cc5b647-c1df-4637-891a-dec35c318583";
+const BOOST_MODE_GUID: &str = r"\be337238-0d82-4146-a960-4f3749d470c7";
+const PROCESSOR_THROTTLE_GUID: &str = r"\893dee8e-2bef-41e0-89c6-b55d0929964c";
 
 pub fn run_cpu_checks() -> CategoryResults {
     let mut results = CategoryResults::new("CPU");
@@ -30,110 +36,40 @@ pub fn run_cpu_checks() -> CategoryResults {
 }
 
 fn check_power_plan() -> Check {
-    // Try to detect active power plan
-    let power_plan_guid = read_registry_string(
-        HKEY_LOCAL_MACHINE,
-        r"SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes",
-        "ActivePowerScheme"
-    );
-    
-    let is_high_performance = power_plan_guid
-        .as_ref()
-        .map(|guid| guid.to_lowercase().contains("8c5e7fda"))
-        .unwrap_or(false);
-    
-    let status = if is_high_performance {
-        CheckStatus::Optimal
-    } else {
-        CheckStatus::Warning
-    };
-    
-    Check::new(
-        "Active Power Plan",
-        if is_high_performance { "High Performance" } else { "Balanced/Other" },
-        status
-    ).with_description("High Performance power plan provides best performance.")
+    let g = read_registry_string(HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes", "ActivePowerScheme");
+    let hp = g.as_ref().map(|x| x.to_lowercase().contains("8c5e7fda")).unwrap_or(false);
+    Check::new("Active Power Plan", if hp { "High Performance" } else { "Balanced/Other" }, if hp { CheckStatus::Optimal } else { CheckStatus::Warning })
+        .with_description("High Performance power plan provides best performance.")
 }
 
 fn check_cstates() -> Check {
-    // Check C-States configuration
-    let cstates_disabled = read_registry_dword(
-        HKEY_LOCAL_MACHINE,
-        r"SYSTEM\CurrentControlSet\Control\Processor",
-        "Capabilities"
-    );
-    
-    Check::new(
-        "C-States",
-        if cstates_disabled.is_some() { "Configured" } else { "Default" },
-        CheckStatus::Info
-    ).with_description("CPU idle states. Disabling can reduce latency but increase power usage.")
+    let v = read_registry_dword(HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Processor", "Capabilities");
+    Check::new("C-States", if v.is_some() { "Configured" } else { "Default" }, CheckStatus::Info)
+        .with_description("CPU idle states. Disabling can reduce latency but increase power usage.")
 }
 
 fn check_core_parking() -> Check {
-    let parking_disabled = read_registry_dword(
-        HKEY_LOCAL_MACHINE,
-        r"SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\0cc5b647-c1df-4637-891a-dec35c318583",
-        "ValueMax"
-    );
-    
-    let status = if parking_disabled == Some(0) {
-        CheckStatus::Optimal
-    } else {
-        CheckStatus::Warning
-    };
-    
-    Check::new(
-        "Core Parking",
-        if parking_disabled == Some(0) { "Disabled" } else { "Enabled" },
-        status
-    ).with_description("Disabling core parking keeps all CPU cores active.")
+    let path = format!("{}{}", POWER_SETTINGS_BASE, CORE_PARKING_GUID);
+    let v = read_registry_dword(HKEY_LOCAL_MACHINE, &path, "ValueMax");
+    Check::new("Core Parking", if v == Some(0) { "Disabled" } else { "Enabled" }, if v == Some(0) { CheckStatus::Optimal } else { CheckStatus::Warning })
+        .with_description("Disabling core parking keeps all CPU cores active.")
 }
 
 fn check_boost_mode() -> Check {
-    let boost_enabled = read_registry_dword(
-        HKEY_LOCAL_MACHINE,
-        r"SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\be337238-0d82-4146-a960-4f3749d470c7",
-        "ValueMax"
-    );
-    
-    let status = if boost_enabled == Some(1) || boost_enabled.is_none() {
-        CheckStatus::Optimal
-    } else {
-        CheckStatus::Warning
-    };
-    
-    Check::new(
-        "Processor Boost Mode",
-        if boost_enabled == Some(1) { "Enabled" } else { "Disabled" },
-        status
-    ).with_description("CPU turbo boost for higher performance.")
+    let path = format!("{}{}", POWER_SETTINGS_BASE, BOOST_MODE_GUID);
+    let v = read_registry_dword(HKEY_LOCAL_MACHINE, &path, "ValueMax");
+    let st = if v == Some(1) || v.is_none() { CheckStatus::Optimal } else { CheckStatus::Warning };
+    Check::new("Processor Boost Mode", if v == Some(1) { "Enabled" } else { "Disabled" }, st)
+        .with_description("CPU turbo boost for higher performance.")
 }
 
 fn check_processor_throttle() -> Check {
-    let throttle_min = read_registry_dword(
-        HKEY_LOCAL_MACHINE,
-        r"SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\893dee8e-2bef-41e0-89c6-b55d0929964c",
-        "ValueMin"
-    ).unwrap_or(5);
-    
-    let throttle_max = read_registry_dword(
-        HKEY_LOCAL_MACHINE,
-        r"SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\893dee8e-2bef-41e0-89c6-b55d0929964c",
-        "ValueMax"
-    ).unwrap_or(100);
-    
-    let status = if throttle_min >= 100 && throttle_max >= 100 {
-        CheckStatus::Optimal
-    } else {
-        CheckStatus::Warning
-    };
-    
-    Check::new(
-        "Processor Throttle",
-        &format!("Min: {}%, Max: {}%", throttle_min, throttle_max),
-        status
-    ).with_description("CPU frequency limits. 100% is optimal for performance.")
+    let path = format!("{}{}", POWER_SETTINGS_BASE, PROCESSOR_THROTTLE_GUID);
+    let min = read_registry_dword(HKEY_LOCAL_MACHINE, &path, "ValueMin").unwrap_or(5);
+    let max = read_registry_dword(HKEY_LOCAL_MACHINE, &path, "ValueMax").unwrap_or(100);
+    let st = if min >= 100 && max >= 100 { CheckStatus::Optimal } else { CheckStatus::Warning };
+    Check::new("Processor Throttle", &format!("Min: {}%, Max: {}%", min, max), st)
+        .with_description("CPU frequency limits. 100% is optimal for performance.")
 }
 
 fn check_vbs_status() -> Check {
@@ -205,11 +141,19 @@ fn check_heterogeneous_scheduler() -> Check {
 }
 
 fn check_smt_status() -> Check {
-    Check::new(
-        "SMT/Hyperthreading",
-        "Enabled (System Detected)",
-        CheckStatus::Info
-    ).with_description("Simultaneous Multi-Threading detection.")
+    let logical = query_wmi_u32("Win32_Processor", "NumberOfLogicalProcessors").unwrap_or(0);
+    let cores = query_wmi_u32("Win32_Processor", "NumberOfCores").unwrap_or(0);
+    
+    let status = if logical > cores && cores > 0 {
+        "Enabled"
+    } else if cores > 0 {
+        "Disabled"
+    } else {
+        "Unknown"
+    };
+    
+    Check::new("SMT/Hyperthreading", status, CheckStatus::Info)
+        .with_description("Simultaneous Multi-Threading detection.")
 }
 
 fn check_speed_shift() -> Check {

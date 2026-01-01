@@ -2,6 +2,23 @@ use crate::types::*;
 use anyhow::Result;
 use std::fs;
 
+fn esc(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#x27;")
+}
+
+fn esc_csv(s: &str) -> String {
+    let s_clean = s.replace('"', "\"\"");
+    if s.starts_with(|c: char| "=+-@\t\r".contains(c)) {
+        format!("'{}", s_clean)
+    } else {
+        s_clean
+    }
+}
+
 pub fn export_json(results: &AuditResults, path: &str) -> Result<()> {
     let json = serde_json::to_string_pretty(results)?;
     fs::write(path, json)?;
@@ -21,11 +38,11 @@ pub fn export_csv(results: &AuditResults, path: &str) -> Result<()> {
             };
             csv.push_str(&format!(
                 "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",
-                category.name,
-                check.name.replace("\"", "\"\""),
-                check.value.replace("\"", "\"\""),
+                esc_csv(&category.name),
+                esc_csv(&check.name),
+                esc_csv(&check.value),
                 status_str,
-                check.description.replace("\"", "\"\"")
+                esc_csv(&check.description)
             ));
         }
     }
@@ -134,7 +151,7 @@ pub fn export_html(results: &AuditResults, path: &str) -> Result<()> {
     
     // Categories
     for category in results.categories.values() {
-        html.push_str(&format!("    <div class=\"category\">\n        <div class=\"category-header\">{}</div>\n", category.name));
+        html.push_str(&format!("    <div class=\"category\">\n        <div class=\"category-header\">{}</div>\n", esc(&category.name)));
         
         for check in &category.checks {
             let icon = match check.status {
@@ -153,13 +170,13 @@ pub fn export_html(results: &AuditResults, path: &str) -> Result<()> {
             
             html.push_str(&format!(
                 "        <div class=\"check\">\n            <div class=\"check-icon {}\">{}</div>\n            <div class=\"check-name\">{}</div>\n            <div class=\"check-value\">{}</div>\n",
-                class, icon, check.name, check.value
+                class, icon, esc(&check.name), esc(&check.value)
             ));
             
             if !check.description.is_empty() {
                 html.push_str(&format!(
                     "            <div class=\"check-description\">{}</div>\n",
-                    check.description
+                    esc(&check.description)
                 ));
             }
             

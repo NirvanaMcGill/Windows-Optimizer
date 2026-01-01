@@ -13,6 +13,9 @@ mod platform;
 mod thermal;
 mod power;
 mod utils;
+mod wmi_helper;
+mod gpu_helper;
+mod service_helper;
 
 pub use latency::run_latency_checks;
 pub use cpu::run_cpu_checks;

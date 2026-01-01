@@ -11,7 +11,7 @@ name = "Windows-Optimizer"
 path = "src/main.rs"
 
 [profile.release]
-opt-level = "z"     # Optimize for size
+opt-level = 3       # MAX PERFORMANCE
 lto = true          # Link-time optimization
 codegen-units = 1   # Better optimization
 strip = true        # Strip symbols
@@ -36,6 +36,9 @@ windows = { version = "0.58", features = [
     "Win32_System_Diagnostics_ToolHelp",
     "Win32_System_WindowsProgramming",
     "Win32_System_Time",
+    "Win32_System_Com",
+    "Win32_Graphics_Dxgi",
+    "Win32_System_Ioctl",
 ]}
 winapi = { version = "0.3", features = ["winreg", "winnt"] }
 rayon = "1.10"
@@ -45,3 +48,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 anyhow = "1"
 chrono = "0.4"
+wmi = "0.14"
+thiserror = "1"
+tracing = "0.1"
+indicatif = "0.17"

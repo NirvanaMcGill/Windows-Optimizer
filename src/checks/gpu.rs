@@ -1,5 +1,6 @@
 use crate::types::*;
 use super::utils::*;
+use super::gpu_helper::*;
 use rayon::prelude::*;
 
 pub fn run_gpu_checks() -> CategoryResults {
@@ -13,8 +14,8 @@ pub fn run_gpu_checks() -> CategoryResults {
         check_mesh_shading(), check_sampler_feedback(), check_gpu_acceleration(), check_gpu_memory_management(), check_gpu_compute_preemption(),
         check_gpu_scheduling_latency(), check_dx_diagnostics(), check_dxgi_flip_model(), check_present_mon_compatible(), check_gpu_priority_support(),
         check_async_compute(), check_multi_adapter(), check_vr_ready(), check_nvidia_reflex(), check_amd_fsr_support(),
-        Check::new("GPU Vendor", "Detected", CheckStatus::Info), Check::new("GPU Model", "Detected", CheckStatus::Info),
-        Check::new("GPU VRAM", "Detected", CheckStatus::Info), Check::new("GPU Driver Version", "Detected", CheckStatus::Info),
+        check_gpu_model(), check_gpu_vram(),
+        Check::new("GPU Driver Version", "Detected", CheckStatus::Info),
         Check::new("GPU Clock Speed", "Normal", CheckStatus::Optimal), Check::new("GPU Memory Clock", "Normal", CheckStatus::Optimal),
         Check::new("GPU Fan Speed", "Automatic", CheckStatus::Info), Check::new("GPU Power Limit", "Default", CheckStatus::Info),
         Check::new("GPU Utilization", "Low at Idle", CheckStatus::Optimal), Check::new("VRAM Usage", "Available", CheckStatus::Optimal),
@@ -28,6 +29,20 @@ pub fn run_gpu_checks() -> CategoryResults {
     }
     
     results
+}
+
+fn check_gpu_model() -> Check {
+    let model = get_gpu_info()
+        .map(|(name, _)| name)
+        .unwrap_or_else(|| "Unknown".to_string());
+    Check::new("GPU Model", &model, CheckStatus::Info)
+}
+
+fn check_gpu_vram() -> Check {
+    let vram = get_gpu_info()
+        .map(|(_, vram)| format!("{} MB", vram / 1024 / 1024))
+        .unwrap_or_else(|| "Unknown".to_string());
+    Check::new("GPU VRAM", &vram, CheckStatus::Info)
 }
 
 fn check_hags() -> Check {

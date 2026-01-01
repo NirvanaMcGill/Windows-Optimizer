@@ -29,9 +29,24 @@ pub fn read_registry_string(_hkey: HKEY, subkey: &str, value_name: &str) -> Opti
             return None;
         }
 
-        let mut buffer = vec![0u16; 512];
-        let mut buffer_size = (buffer.len() * 2) as u32;
+        // Query size first
+        let mut size = 0u32;
         let mut data_type = 0u32;
+        if winapi::um::winreg::RegQueryValueExW(
+            hkey_result,
+            value_wide.as_ptr(),
+            ptr::null_mut(),
+            &mut data_type,
+            ptr::null_mut(),
+            &mut size,
+        ) != 0 {
+            winapi::um::winreg::RegCloseKey(hkey_result);
+            return None;
+        }
+
+        // Allocate buffer based on actual size
+        let mut buffer = vec![0u16; (size as usize / 2) + 1];
+        let mut buffer_size = size;
 
         if winapi::um::winreg::RegQueryValueExW(
             hkey_result,

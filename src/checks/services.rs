@@ -1,39 +1,72 @@
 use crate::types::*;
+use super::service_helper::*;
 use rayon::prelude::*;
 
 pub fn run_services_checks() -> CategoryResults {
     let mut results = CategoryResults::new("Services");
     
-    let base_checks = vec![
-        Check::new("DiagTrack (Telemetry)", "Running", CheckStatus::Warning).with_description("Can be disabled for privacy."),
-        Check::new("dmwappushservice", "Stopped", CheckStatus::Optimal), Check::new("SysMain (Superfetch)", "Running", CheckStatus::Info),
-        Check::new("TabletInputService", "Stopped", CheckStatus::Info), Check::new("WSearch (Windows Search)", "Running", CheckStatus::Info),
-        Check::new("XblAuthManager", "Stopped", CheckStatus::Info), Check::new("XblGameSave", "Stopped", CheckStatus::Info),
-        Check::new("XboxNetApiSvc", "Stopped", CheckStatus::Info), Check::new("XboxGipSvc", "Stopped", CheckStatus::Info),
-        Check::new("Windows Update", "Running", CheckStatus::Optimal), Check::new("Windows Defender", "Running", CheckStatus::Optimal),
-        Check::new("Windows Firewall", "Running", CheckStatus::Optimal), Check::new("Task Scheduler", "Running", CheckStatus::Optimal),
-        Check::new("Plug and Play", "Running", CheckStatus::Optimal), Check::new("RPC Service", "Running", CheckStatus::Optimal),
-        Check::new("DCOM Server", "Running", CheckStatus::Optimal), Check::new("Cryptographic Services", "Running", CheckStatus::Optimal),
-        Check::new("Windows Audio", "Running", CheckStatus::Optimal), Check::new("Windows Audio Endpoint Builder", "Running", CheckStatus::Optimal),
-        Check::new("Themes", "Running", CheckStatus::Info), Check::new("Print Spooler", "Running", CheckStatus::Info),
-        Check::new("Background Intelligent Transfer", "Running", CheckStatus::Info), Check::new("Windows Biometric Service", "Stopped", CheckStatus::Info),
-        Check::new("Remote Desktop Services", "Stopped", CheckStatus::Info), Check::new("Fax", "Stopped", CheckStatus::Info),
-        Check::new("HomeGroup Listener", "Stopped", CheckStatus::Info), Check::new("HomeGroup Provider", "Stopped", CheckStatus::Info),
-        Check::new("Windows Mobile Hotspot", "Stopped", CheckStatus::Info), Check::new("Phone Service", "Stopped", CheckStatus::Info),
-        Check::new("Retail Demo Service", "Stopped", CheckStatus::Info), Check::new("Sensor Service", "Stopped", CheckStatus::Info),
-        Check::new("Smart Card", "Stopped", CheckStatus::Info), Check::new("Smart Card Removal Policy", "Stopped", CheckStatus::Info),
-        Check::new("Windows Image Acquisition", "Stopped", CheckStatus::Info), Check::new("Windows Connect Now", "Stopped", CheckStatus::Info),
-        Check::new("WalletService", "Stopped", CheckStatus::Info), Check::new("Windows Insider Service", "Stopped", CheckStatus::Info),
-        Check::new("Downloaded Maps Manager", "Stopped", CheckStatus::Info), Check::new("Geolocation Service", "Stopped", CheckStatus::Info),
-        Check::new("Remote Registry", "Stopped", CheckStatus::Info), Check::new("Connected User Experiences", "Running", CheckStatus::Info),
-        Check::new("Windows Event Log", "Running", CheckStatus::Optimal), Check::new("COM+ Event System", "Running", CheckStatus::Optimal),
-        Check::new("Distributed Transaction Coordinator", "Stopped", CheckStatus::Info), Check::new("Windows Management Instrumentation", "Running", CheckStatus::Optimal),
-        Check::new("Shell Hardware Detection", "Running", CheckStatus::Info), Check::new("Security Accounts Manager", "Running", CheckStatus::Optimal),
-        Check::new("Server", "Running", CheckStatus::Info), Check::new("Workstation", "Running", CheckStatus::Optimal),
-        Check::new("Network List Service", "Running", CheckStatus::Optimal), Check::new("DNS Client", "Running", CheckStatus::Optimal),
+    let service_checks = vec![
+        ("DiagTrack", "DiagTrack (Telemetry)", CheckStatus::Warning, "Can be disabled for privacy."),
+        ("dmwappushservice", "dmwappushservice", CheckStatus::Info, "Push notification service."),
+        ("SysMain", "SysMain (Superfetch)", CheckStatus::Info, "Preloads apps."),
+        ("TabletInputService", "TabletInputService", CheckStatus::Info, "Tablet PC input."),
+        ("WSearch", "WSearch (Windows Search)", CheckStatus::Info, "File indexing."),
+        ("XblAuthManager", "XblAuthManager", CheckStatus::Info, "Xbox Live Auth."),
+        ("XblGameSave", "XblGameSave", CheckStatus::Info, "Xbox Game Save."),
+        ("XboxNetApiSvc", "XboxNetApiSvc", CheckStatus::Info, "Xbox Network."),
+        ("XboxGipSvc", "XboxGipSvc", CheckStatus::Info, "Xbox Accessory Management."),
+        ("wuauserv", "Windows Update", CheckStatus::Optimal, "System updates."),
+        ("WinDefend", "Windows Defender", CheckStatus::Optimal, "Antivirus protection."),
+        ("MpsSvc", "Windows Firewall", CheckStatus::Optimal, "Network security."),
+        ("Schedule", "Task Scheduler", CheckStatus::Optimal, "Scheduled tasks."),
+        ("PlugPlay", "Plug and Play", CheckStatus::Optimal, "Device detection."),
+        ("RpcSs", "RPC Service", CheckStatus::Optimal, "Remote procedure calls."),
+        ("DcomLaunch", "DCOM Server", CheckStatus::Optimal, "Component services."),
+        ("CryptSvc", "Cryptographic Services", CheckStatus::Optimal, "Encryption services."),
+        ("AudioSrv", "Windows Audio", CheckStatus::Optimal, "Audio management."),
+        ("AudioEndpointBuilder", "Windows Audio Endpoint Builder", CheckStatus::Optimal, "Audio device management."),
+        ("Themes", "Themes", CheckStatus::Info, "Visual themes."),
+        ("Spooler", "Print Spooler", CheckStatus::Info, "Print management."),
+        ("BITS", "Background Intelligent Transfer", CheckStatus::Info, "Background downloads."),
+        ("WbioSrvc", "Windows Biometric Service", CheckStatus::Info, "Biometric devices."),
+        ("TermService", "Remote Desktop Services", CheckStatus::Info, "Remote desktop."),
+        ("Fax", "Fax", CheckStatus::Info, "Fax service."),
+        ("HomeGroupListener", "HomeGroup Listener", CheckStatus::Info, "HomeGroup."),
+        ("HomeGroupProvider", "HomeGroup Provider", CheckStatus::Info, "HomeGroup."),
+        ("icssvc", "Windows Mobile Hotspot", CheckStatus::Info, "Mobile hotspot."),
+        ("PhoneSvc", "Phone Service", CheckStatus::Info, "Phone functionality."),
+        ("RetailDemo", "Retail Demo Service", CheckStatus::Info, "Demo mode."),
+        ("SensorService", "Sensor Service", CheckStatus::Info, "Sensor management."),
+        ("ScDeviceEnum", "Smart Card Device Enumeration", CheckStatus::Info, "Smart card."),
+        ("SCPolicySvc", "Smart Card Removal Policy", CheckStatus::Info, "Smart card."),
+        ("WiaRpc", "Windows Image Acquisition", CheckStatus::Info, "Scanner/camera."),
+        ("wcncsvc", "Windows Connect Now", CheckStatus::Info, "Network setup."),
+        ("WalletService", "WalletService", CheckStatus::Info, "Wallet service."),
+        ("wisvc", "Windows Insider Service", CheckStatus::Info, "Insider builds."),
+        ("MapsBroker", "Downloaded Maps Manager", CheckStatus::Info, "Offline maps."),
+        ("lfsvc", "Geolocation Service", CheckStatus::Info, "Location services."),
+        ("RemoteRegistry", "Remote Registry", CheckStatus::Info, "Remote registry access."),
+        ("CDPUserSvc", "Connected User Experiences", CheckStatus::Info, "Connected experiences."),
+        ("EventLog", "Windows Event Log", CheckStatus::Optimal, "Event logging."),
+        ("EventSystem", "COM+ Event System", CheckStatus::Optimal, "COM+ events."),
+        ("MSDTC", "Distributed Transaction Coordinator", CheckStatus::Info, "Distributed transactions."),
+        ("Winmgmt", "Windows Management Instrumentation", CheckStatus::Optimal, "WMI service."),
+        ("ShellHWDetection", "Shell Hardware Detection", CheckStatus::Info, "Hardware events."),
+        ("SamSs", "Security Accounts Manager", CheckStatus::Optimal, "Account management."),
+        ("LanmanServer", "Server", CheckStatus::Info, "File sharing."),
+        ("LanmanWorkstation", "Workstation", CheckStatus::Optimal, "Network connections."),
+        ("netprofm", "Network List Service", CheckStatus::Optimal, "Network identification."),
+        ("Dnscache", "DNS Client", CheckStatus::Optimal, "DNS resolution."),
     ];
     
-    for check in base_checks {
+    let checks: Vec<Check> = service_checks.into_par_iter()
+        .map(|(svc, name, default_status, desc)| {
+            let status_str = query_service_status(svc).unwrap_or_else(|| "Unknown".to_string());
+            Check::new(name, &status_str, default_status).with_description(desc)
+        })
+        .collect();
+    
+    for check in checks {
         results.add_check(check);
     }
     

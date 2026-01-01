@@ -6,17 +6,18 @@ fn sanitize_wmi_identifier(s: &str) -> bool {
 #[cfg(windows)]
 pub fn query_wmi_u32(class: &str, property: &str) -> Option<u32> {
     use wmi::{COMLibrary, WMIConnection};
-    
+
     if !sanitize_wmi_identifier(class) || !sanitize_wmi_identifier(property) {
         return None;
     }
-    
+
     let com_con = COMLibrary::new().ok()?;
     let wmi_con = WMIConnection::new(com_con).ok()?;
-    
-    let results: Vec<std::collections::HashMap<String, wmi::Variant>> = 
-        wmi_con.raw_query(&format!("SELECT {} FROM {}", property, class)).ok()?;
-    
+
+    let results: Vec<std::collections::HashMap<String, wmi::Variant>> = wmi_con
+        .raw_query(&format!("SELECT {} FROM {}", property, class))
+        .ok()?;
+
     results.first().and_then(|r| {
         r.get(property).and_then(|v| match v {
             wmi::Variant::UI4(n) => Some(*n),
@@ -31,17 +32,18 @@ pub fn query_wmi_u32(class: &str, property: &str) -> Option<u32> {
 #[cfg(windows)]
 pub fn query_wmi_u64(class: &str, property: &str) -> Option<u64> {
     use wmi::{COMLibrary, WMIConnection};
-    
+
     if !sanitize_wmi_identifier(class) || !sanitize_wmi_identifier(property) {
         return None;
     }
-    
+
     let com_con = COMLibrary::new().ok()?;
     let wmi_con = WMIConnection::new(com_con).ok()?;
-    
-    let results: Vec<std::collections::HashMap<String, wmi::Variant>> = 
-        wmi_con.raw_query(&format!("SELECT {} FROM {}", property, class)).ok()?;
-    
+
+    let results: Vec<std::collections::HashMap<String, wmi::Variant>> = wmi_con
+        .raw_query(&format!("SELECT {} FROM {}", property, class))
+        .ok()?;
+
     results.first().and_then(|r| {
         r.get(property).and_then(|v| match v {
             wmi::Variant::UI8(n) => Some(*n),
@@ -55,17 +57,18 @@ pub fn query_wmi_u64(class: &str, property: &str) -> Option<u64> {
 #[cfg(windows)]
 pub fn query_wmi_string(class: &str, property: &str) -> Option<String> {
     use wmi::{COMLibrary, WMIConnection};
-    
+
     if !sanitize_wmi_identifier(class) || !sanitize_wmi_identifier(property) {
         return None;
     }
-    
+
     let com_con = COMLibrary::new().ok()?;
     let wmi_con = WMIConnection::new(com_con).ok()?;
-    
-    let results: Vec<std::collections::HashMap<String, wmi::Variant>> = 
-        wmi_con.raw_query(&format!("SELECT {} FROM {}", property, class)).ok()?;
-    
+
+    let results: Vec<std::collections::HashMap<String, wmi::Variant>> = wmi_con
+        .raw_query(&format!("SELECT {} FROM {}", property, class))
+        .ok()?;
+
     results.first().and_then(|r| {
         r.get(property).and_then(|v| match v {
             wmi::Variant::String(s) => Some(s.clone()),
@@ -77,42 +80,116 @@ pub fn query_wmi_string(class: &str, property: &str) -> Option<String> {
 #[cfg(windows)]
 pub fn count_wmi_instances(class: &str) -> usize {
     use wmi::{COMLibrary, WMIConnection};
-    
+
     if !sanitize_wmi_identifier(class) {
         return 0;
     }
-    
+
     let com_con = COMLibrary::new().ok();
     let wmi_con = com_con.and_then(|c| WMIConnection::new(c).ok());
-    
-    wmi_con.and_then(|w| {
-        let results: Result<Vec<std::collections::HashMap<String, wmi::Variant>>, _> = 
-            w.raw_query(&format!("SELECT * FROM {}", class));
-        results.ok().map(|r| r.len())
-    }).unwrap_or(0)
+
+    wmi_con
+        .and_then(|w| {
+            let results: Result<Vec<std::collections::HashMap<String, wmi::Variant>>, _> =
+                w.raw_query(&format!("SELECT * FROM {}", class));
+            results.ok().map(|r| r.len())
+        })
+        .unwrap_or(0)
 }
 
 #[cfg(windows)]
 pub fn query_cpu_info() -> Option<CpuInfo> {
     use wmi::{COMLibrary, WMIConnection};
-    
+
     let com_con = COMLibrary::new().ok()?;
     let wmi_con = WMIConnection::new(com_con).ok()?;
-    
-    let results: Vec<std::collections::HashMap<String, wmi::Variant>> = 
+
+    let results: Vec<std::collections::HashMap<String, wmi::Variant>> =
         wmi_con.raw_query("SELECT Name,NumberOfCores,NumberOfLogicalProcessors,MaxClockSpeed,CurrentClockSpeed,L2CacheSize,L3CacheSize,Architecture FROM Win32_Processor").ok()?;
-    
+
     let first = results.first()?;
-    
+
     Some(CpuInfo {
-        name: first.get("Name").and_then(|v| if let wmi::Variant::String(s) = v { Some(s.clone()) } else { None }).unwrap_or_default(),
-        cores: first.get("NumberOfCores").and_then(|v| if let wmi::Variant::UI4(n) = v { Some(*n) } else { None }).unwrap_or(0),
-        logical: first.get("NumberOfLogicalProcessors").and_then(|v| if let wmi::Variant::UI4(n) = v { Some(*n) } else { None }).unwrap_or(0),
-        max_clock: first.get("MaxClockSpeed").and_then(|v| if let wmi::Variant::UI4(n) = v { Some(*n) } else { None }).unwrap_or(0),
-        current_clock: first.get("CurrentClockSpeed").and_then(|v| if let wmi::Variant::UI4(n) = v { Some(*n) } else { None }).unwrap_or(0),
-        l2_cache: first.get("L2CacheSize").and_then(|v| if let wmi::Variant::UI4(n) = v { Some(*n) } else { None }).unwrap_or(0),
-        l3_cache: first.get("L3CacheSize").and_then(|v| if let wmi::Variant::UI4(n) = v { Some(*n) } else { None }).unwrap_or(0),
-        architecture: first.get("Architecture").and_then(|v| if let wmi::Variant::UI2(n) = v { Some(*n) } else { None }).unwrap_or(0),
+        name: first
+            .get("Name")
+            .and_then(|v| {
+                if let wmi::Variant::String(s) = v {
+                    Some(s.clone())
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_default(),
+        cores: first
+            .get("NumberOfCores")
+            .and_then(|v| {
+                if let wmi::Variant::UI4(n) = v {
+                    Some(*n)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(0),
+        logical: first
+            .get("NumberOfLogicalProcessors")
+            .and_then(|v| {
+                if let wmi::Variant::UI4(n) = v {
+                    Some(*n)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(0),
+        max_clock: first
+            .get("MaxClockSpeed")
+            .and_then(|v| {
+                if let wmi::Variant::UI4(n) = v {
+                    Some(*n)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(0),
+        current_clock: first
+            .get("CurrentClockSpeed")
+            .and_then(|v| {
+                if let wmi::Variant::UI4(n) = v {
+                    Some(*n)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(0),
+        l2_cache: first
+            .get("L2CacheSize")
+            .and_then(|v| {
+                if let wmi::Variant::UI4(n) = v {
+                    Some(*n)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(0),
+        l3_cache: first
+            .get("L3CacheSize")
+            .and_then(|v| {
+                if let wmi::Variant::UI4(n) = v {
+                    Some(*n)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(0),
+        architecture: first
+            .get("Architecture")
+            .and_then(|v| {
+                if let wmi::Variant::UI2(n) = v {
+                    Some(*n)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(0),
     })
 }
 

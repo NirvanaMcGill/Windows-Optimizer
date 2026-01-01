@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub enum Category {
     Latency,
     Cpu,
@@ -20,6 +21,7 @@ pub enum Category {
 }
 
 impl Category {
+    #[allow(dead_code)]
     pub fn as_str(&self) -> &'static str {
         match self {
             Category::Latency => "latency",
@@ -38,7 +40,8 @@ impl Category {
             Category::Power => "power",
         }
     }
-    
+
+    #[allow(dead_code)]
     pub fn display_name(&self) -> &'static str {
         match self {
             Category::Latency => "Latency",
@@ -60,6 +63,7 @@ impl Category {
 }
 
 #[derive(thiserror::Error, Debug)]
+#[allow(dead_code)]
 pub enum CheckError {
     #[error("Registry: {0}")]
     Registry(String),
@@ -109,17 +113,20 @@ impl Check {
         self.description = desc.to_string();
         self
     }
-    
+
+    #[allow(dead_code)]
     pub fn with_expected(mut self, expected: &str) -> Self {
         self.expected = Some(expected.to_string());
         self
     }
-    
+
+    #[allow(dead_code)]
     pub fn with_severity(mut self, severity: u8) -> Self {
         self.severity = severity.min(10);
         self
     }
-    
+
+    #[allow(dead_code)]
     pub fn with_fix_cmd(mut self, cmd: &str) -> Self {
         self.fix_cmd = Some(cmd.to_string());
         self
@@ -151,6 +158,12 @@ pub struct AuditResults {
     pub timestamp: String,
 }
 
+impl Default for AuditResults {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AuditResults {
     pub fn new() -> Self {
         Self {
@@ -168,7 +181,8 @@ impl AuditResults {
     }
 
     pub fn count_status(&self, status: CheckStatus) -> usize {
-        self.categories.values()
+        self.categories
+            .values()
             .flat_map(|c| &c.checks)
             .filter(|check| check.status == status)
             .count()

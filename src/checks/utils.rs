@@ -1,23 +1,39 @@
-pub type HKEY = u32;
-pub const HKEY_LOCAL_MACHINE: HKEY = 1;
-pub const HKEY_CURRENT_USER: HKEY = 2;
+pub type Hkey = u32;
+pub const HKEY_LOCAL_MACHINE: Hkey = 1;
+pub const HKEY_CURRENT_USER: Hkey = 2;
+
+#[allow(unused_macros)]
+macro_rules! reg_check {
+    ($name:expr, $hkey:expr, $path:expr, $value:expr, $good:expr, $bad:expr) => {{
+        let val = read_registry_dword($hkey, $path, $value);
+        let (status, text) = if val == Some($good) {
+            (CheckStatus::Optimal, "Optimal")
+        } else {
+            (CheckStatus::Warning, "Suboptimal")
+        };
+        Check::new($name, text, status)
+    }};
+}
 
 #[cfg(windows)]
-pub fn read_registry_string(_hkey: HKEY, subkey: &str, value_name: &str) -> Option<String> {
-    use std::ptr;
+pub fn read_registry_string(_hkey: Hkey, subkey: &str, value_name: &str) -> Option<String> {
     use std::ffi::OsString;
     use std::os::windows::ffi::OsStringExt;
-    
+    use std::ptr;
+
     unsafe {
         let hkey_root: isize = if _hkey == HKEY_LOCAL_MACHINE {
             0x80000002_u32 as isize
         } else {
             0x80000001_u32 as isize
         };
-        
+
         let subkey_wide: Vec<u16> = subkey.encode_utf16().chain(std::iter::once(0)).collect();
-        let value_wide: Vec<u16> = value_name.encode_utf16().chain(std::iter::once(0)).collect();
-        
+        let value_wide: Vec<u16> = value_name
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .collect();
+
         let mut hkey_result: isize = 0;
         if winapi::um::winreg::RegOpenKeyExW(
             hkey_root,
@@ -25,7 +41,8 @@ pub fn read_registry_string(_hkey: HKEY, subkey: &str, value_name: &str) -> Opti
             0,
             winapi::um::winnt::KEY_READ,
             &mut hkey_result,
-        ) != 0 {
+        ) != 0
+        {
             return None;
         }
 
@@ -39,7 +56,8 @@ pub fn read_registry_string(_hkey: HKEY, subkey: &str, value_name: &str) -> Opti
             &mut data_type,
             ptr::null_mut(),
             &mut size,
-        ) != 0 {
+        ) != 0
+        {
             winapi::um::winreg::RegCloseKey(hkey_result);
             return None;
         }
@@ -55,10 +73,15 @@ pub fn read_registry_string(_hkey: HKEY, subkey: &str, value_name: &str) -> Opti
             &mut data_type,
             buffer.as_mut_ptr() as *mut u8,
             &mut buffer_size,
-        ) == 0 {
+        ) == 0
+        {
             winapi::um::winreg::RegCloseKey(hkey_result);
             let len = buffer.iter().position(|&c| c == 0).unwrap_or(buffer.len());
-            Some(OsString::from_wide(&buffer[..len]).to_string_lossy().to_string())
+            Some(
+                OsString::from_wide(&buffer[..len])
+                    .to_string_lossy()
+                    .to_string(),
+            )
         } else {
             winapi::um::winreg::RegCloseKey(hkey_result);
             None
@@ -67,24 +90,27 @@ pub fn read_registry_string(_hkey: HKEY, subkey: &str, value_name: &str) -> Opti
 }
 
 #[cfg(not(windows))]
-pub fn read_registry_string(_hkey: HKEY, _subkey: &str, _value_name: &str) -> Option<String> {
+pub fn read_registry_string(_hkey: Hkey, _subkey: &str, _value_name: &str) -> Option<String> {
     None
 }
 
 #[cfg(windows)]
-pub fn read_registry_dword(_hkey: HKEY, subkey: &str, value_name: &str) -> Option<u32> {
+pub fn read_registry_dword(_hkey: Hkey, subkey: &str, value_name: &str) -> Option<u32> {
     use std::ptr;
-    
+
     unsafe {
         let hkey_root: isize = if _hkey == HKEY_LOCAL_MACHINE {
             0x80000002_u32 as isize
         } else {
             0x80000001_u32 as isize
         };
-        
+
         let subkey_wide: Vec<u16> = subkey.encode_utf16().chain(std::iter::once(0)).collect();
-        let value_wide: Vec<u16> = value_name.encode_utf16().chain(std::iter::once(0)).collect();
-        
+        let value_wide: Vec<u16> = value_name
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .collect();
+
         let mut hkey_result: isize = 0;
         if winapi::um::winreg::RegOpenKeyExW(
             hkey_root,
@@ -92,7 +118,8 @@ pub fn read_registry_dword(_hkey: HKEY, subkey: &str, value_name: &str) -> Optio
             0,
             winapi::um::winnt::KEY_READ,
             &mut hkey_result,
-        ) != 0 {
+        ) != 0
+        {
             return None;
         }
 
@@ -107,7 +134,9 @@ pub fn read_registry_dword(_hkey: HKEY, subkey: &str, value_name: &str) -> Optio
             &mut data_type,
             &mut value as *mut u32 as *mut u8,
             &mut buffer_size,
-        ) == 0 && data_type == 4 {
+        ) == 0
+            && data_type == 4
+        {
             winapi::um::winreg::RegCloseKey(hkey_result);
             Some(value)
         } else {
@@ -118,16 +147,11 @@ pub fn read_registry_dword(_hkey: HKEY, subkey: &str, value_name: &str) -> Optio
 }
 
 #[cfg(not(windows))]
-pub fn read_registry_dword(_hkey: HKEY, _subkey: &str, _value_name: &str) -> Option<u32> {
+pub fn read_registry_dword(_hkey: Hkey, _subkey: &str, _value_name: &str) -> Option<u32> {
     None
 }
 
-pub fn registry_key_exists(hkey: HKEY, subkey: &str) -> bool {
-    read_registry_string(hkey, subkey, "").is_some() ||
-        read_registry_dword(hkey, subkey, "").is_some()
-}
-
-pub fn registry_value_exists(hkey: HKEY, subkey: &str, value_name: &str) -> bool {
-    read_registry_string(hkey, subkey, value_name).is_some() ||
-    read_registry_dword(hkey, subkey, value_name).is_some()
+pub fn registry_key_exists(hkey: Hkey, subkey: &str) -> bool {
+    read_registry_string(hkey, subkey, "").is_some()
+        || read_registry_dword(hkey, subkey, "").is_some()
 }

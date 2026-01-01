@@ -201,11 +201,8 @@ fn run_all_checks(cli: &Cli) -> Result<AuditResults> {
     };
 
     // Run checks in parallel by category
-    let category_results: Vec<_> = categories.iter()
+    let category_results: Vec<_> = categories.par_iter()
         .map(|category| {
-            if let Some(ref p) = pb {
-                p.set_message(format!("Checking {}", category));
-            }
             let result = match *category {
                 "latency" => run_latency_checks(),
                 "cpu" => run_cpu_checks(),
@@ -225,6 +222,7 @@ fn run_all_checks(cli: &Cli) -> Result<AuditResults> {
             };
             if let Some(ref p) = pb {
                 p.inc(1);
+                p.set_message(format!("Completed {}", category));
             }
             result
         })

@@ -51,8 +51,8 @@ fn check_ram_channel() -> Check {
 
 fn check_page_file() -> Check {
     let pf = read_registry_string(HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management", "PagingFiles");
-    Check::new("Page File", if pf.is_some() { "Configured" } else { "Not Set" }, if pf.is_some() { CheckStatus::Optimal } else { CheckStatus::Warning })
-        .with_description("System-managed or 1.5x RAM size recommended.")
+    let (val, st) = if pf.is_some() { ("Configured", CheckStatus::Optimal) } else { ("Not Set", CheckStatus::Warning) };
+    Check::new("Page File", val, st).with_description("System-managed or 1.5x RAM size recommended.")
 }
 
 fn check_memory_compression() -> Check {

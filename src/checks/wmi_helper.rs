@@ -1,6 +1,16 @@
 #[cfg(windows)]
+fn sanitize_wmi_identifier(s: &str) -> bool {
+    // Only allow alphanumeric and underscore in WMI class/property names
+    s.chars().all(|c| c.is_alphanumeric() || c == '_')
+}
+
+#[cfg(windows)]
 pub fn query_wmi_u32(class: &str, property: &str) -> Option<u32> {
     use wmi::{COMLibrary, WMIConnection};
+    
+    if !sanitize_wmi_identifier(class) || !sanitize_wmi_identifier(property) {
+        return None;
+    }
     
     let com_con = COMLibrary::new().ok()?;
     let wmi_con = WMIConnection::new(com_con).ok()?;
@@ -21,6 +31,10 @@ pub fn query_wmi_u32(class: &str, property: &str) -> Option<u32> {
 pub fn query_wmi_u64(class: &str, property: &str) -> Option<u64> {
     use wmi::{COMLibrary, WMIConnection};
     
+    if !sanitize_wmi_identifier(class) || !sanitize_wmi_identifier(property) {
+        return None;
+    }
+    
     let com_con = COMLibrary::new().ok()?;
     let wmi_con = WMIConnection::new(com_con).ok()?;
     
@@ -40,6 +54,10 @@ pub fn query_wmi_u64(class: &str, property: &str) -> Option<u64> {
 pub fn query_wmi_string(class: &str, property: &str) -> Option<String> {
     use wmi::{COMLibrary, WMIConnection};
     
+    if !sanitize_wmi_identifier(class) || !sanitize_wmi_identifier(property) {
+        return None;
+    }
+    
     let com_con = COMLibrary::new().ok()?;
     let wmi_con = WMIConnection::new(com_con).ok()?;
     
@@ -57,6 +75,10 @@ pub fn query_wmi_string(class: &str, property: &str) -> Option<String> {
 #[cfg(windows)]
 pub fn count_wmi_instances(class: &str) -> usize {
     use wmi::{COMLibrary, WMIConnection};
+    
+    if !sanitize_wmi_identifier(class) {
+        return 0;
+    }
     
     let com_con = COMLibrary::new().ok();
     let wmi_con = com_con.and_then(|c| WMIConnection::new(c).ok());

@@ -1,0 +1,47 @@
+[package]
+name = "windows-optimizer"
+version = "1.0.0"
+edition = "2021"
+authors = ["Windows Optimizer Contributors"]
+description = "Military-grade Windows system performance auditor and optimizer"
+license = "MIT"
+
+[[bin]]
+name = "Windows-Optimizer"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = "z"     # Optimize for size
+lto = true          # Link-time optimization
+codegen-units = 1   # Better optimization
+strip = true        # Strip symbols
+panic = "abort"     # Smaller binary
+
+[dependencies]
+windows = { version = "0.58", features = [
+    "Win32_Foundation",
+    "Win32_System_Registry",
+    "Win32_System_Services",
+    "Win32_System_Power",
+    "Win32_System_SystemInformation",
+    "Win32_System_Threading",
+    "Win32_System_Performance",
+    "Win32_System_EventLog",
+    "Win32_Devices_DeviceAndDriverInstallation",
+    "Win32_Storage_FileSystem",
+    "Win32_NetworkManagement_IpHelper",
+    "Win32_NetworkManagement_Ndis",
+    "Win32_Security",
+    "Win32_UI_Shell",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_WindowsProgramming",
+    "Win32_System_Time",
+]}
+winapi = { version = "0.3", features = ["winreg", "winnt"] }
+rayon = "1.10"
+clap = { version = "4", features = ["derive"] }
+colored = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+chrono = "0.4"

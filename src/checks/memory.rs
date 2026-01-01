@@ -1,5 +1,6 @@
 use crate::types::*;
 use super::utils::*;
+use super::wmi_helper::*;
 use rayon::prelude::*;
 
 pub fn run_memory_checks() -> CategoryResults {
@@ -26,19 +27,26 @@ pub fn run_memory_checks() -> CategoryResults {
 }
 
 fn check_ram_speed() -> Check {
-    Check::new(
-        "RAM Speed",
-        "System Detected",
-        CheckStatus::Info
-    ).with_description("Current RAM frequency. Check BIOS for XMP/DOCP profile.")
+    let speed = query_wmi_u32("Win32_PhysicalMemory", "Speed")
+        .map(|s| format!("{} MHz", s))
+        .unwrap_or_else(|| "Unknown".to_string());
+    
+    Check::new("RAM Speed", &speed, CheckStatus::Info)
+        .with_description("Current RAM frequency. Check BIOS for XMP/DOCP profile.")
 }
 
 fn check_ram_channel() -> Check {
-    Check::new(
-        "RAM Channel Configuration",
-        "Dual Channel",
-        CheckStatus::Info
-    ).with_description("Dual channel provides 2x memory bandwidth vs single channel.")
+    let count = count_wmi_instances("Win32_PhysicalMemory");
+    let channel = match count {
+        0 => "Unknown",
+        1 => "Single Channel",
+        2 => "Dual Channel",
+        4 => "Quad Channel",
+        _ => "Multi Channel",
+    };
+    
+    Check::new("RAM Channel Configuration", channel, CheckStatus::Info)
+        .with_description("Dual channel provides 2x memory bandwidth vs single channel.")
 }
 
 fn check_page_file() -> Check {

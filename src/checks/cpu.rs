@@ -1,5 +1,6 @@
 use crate::types::*;
 use super::utils::*;
+use super::wmi_helper::*;
 use rayon::prelude::*;
 
 pub fn run_cpu_checks() -> CategoryResults {
@@ -205,11 +206,19 @@ fn check_heterogeneous_scheduler() -> Check {
 }
 
 fn check_smt_status() -> Check {
-    Check::new(
-        "SMT/Hyperthreading",
-        "Enabled (System Detected)",
-        CheckStatus::Info
-    ).with_description("Simultaneous Multi-Threading detection.")
+    let logical = query_wmi_u32("Win32_Processor", "NumberOfLogicalProcessors").unwrap_or(0);
+    let cores = query_wmi_u32("Win32_Processor", "NumberOfCores").unwrap_or(0);
+    
+    let status = if logical > cores && cores > 0 {
+        "Enabled"
+    } else if cores > 0 {
+        "Disabled"
+    } else {
+        "Unknown"
+    };
+    
+    Check::new("SMT/Hyperthreading", status, CheckStatus::Info)
+        .with_description("Simultaneous Multi-Threading detection.")
 }
 
 fn check_speed_shift() -> Check {
